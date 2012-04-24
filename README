@@ -1,3 +1,46 @@
 This is the standard Hadoop WordCount and WordCount2 example code with the
 modification that it will throw an exception or a emit a warning when it
 finds the word "cloudera" in the text that it is counting.
+
+data/shakespeare-each.tar.gz contains 45 files, 2 of which have the string
+"cloudera" added in order to make WordCount.jar fail or send a warning.
+
+tragedies_hamlet_c:
+HAMLET  To cloudera, or not to cloudera: that is the question:
+
+tragedies_romeo_and_juliet_c:
+JULIET  O Romeo, Romeo! wherefore art thou cloudera?
+
+I usually have them in two directories, one with "cloudera" and one
+without:
+  tar xfz shakespeare-each.tar.gz
+  cd shakespeare-each
+  hadoop --config ../hadoop-conf/ fs -mkdir shake
+  hadoop --config ../hadoop-conf/ fs -mkdir shake-c
+  hadoop --config ../hadoop-conf/ fs -put * shake-c
+  hadoop --config ../hadoop-conf/ fs -put * shake
+  hadoop --config ../hadoop-conf/ fs -rm shake/*_c
+  hadoop --config ../hadoop-conf/ fs -rm shake-c/tragedies_hamlet
+  hadoop --config ../hadoop-conf/ fs -mv shake-c/hamlet_c shake-c/hamlet
+  hadoop --config ../hadoop-conf/ fs -rm shake-c/tragedies_romeo_and_juliet
+  hadoop --config ../hadoop-conf/ fs -mv shake-c/tragedies_romeo_and_juliet_c shake-c/tragedies_romeo_and_juliet
+  cd ..
+
+Classes:
+WordCount2FailMap: Map task will throw IOException "Invalid word received"
+WordCount2WarnMap: Map task will print "Warning: Anachronistic word" and
+  increment Counters.ANACHRONISTIC_WORDS
+WordCount2FailReduce: Reduce task will throw RuntimeException "Invalid word found"
+WordCount2WarnReduce: Reduce task will print "Anachronistic word %s found" and
+  increment ReduceCounters.ANACHRONISTIC_WORDS
+
+I also made similar modifications to WordCount with similar class names. It's
+not possible to pass arbitrary options (like -D mapred.reduce.tasks) to
+these classes, though.
+
+To run:
+  hadoop --config hadoop-conf/ fs -rmr shake-out
+  hadoop --config hadoop-conf/ jar WordCount.jar WordCount2FailMap shake-c shake-out
+  hadoop --config hadoop-conf/ jar WordCount.jar WordCount2WarnMap -D mapred.reduce.tasks=5 shake-c shake-out
+  hadoop --config hadoop-conf/ jar WordCount.jar WordCount2FailReduce -D mapred.reduce.tasks=5 shake-c shake-out
+  hadoop --config hadoop-conf/ jar WordCount.jar WordCount2WarnReduce -D mapred.reduce.tasks=5 shake-c shake-out
